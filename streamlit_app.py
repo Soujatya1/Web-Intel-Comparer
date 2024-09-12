@@ -53,7 +53,7 @@ def load_sitemap(sitemap_urls, filter_urls):
       selected_urls = [url for url in urls if any(filter in url for filter in filter_urls)]
     except Exception as e:
       st.error(f"Error loading sitemap: {e}")
-return filtered_urls
+  return filtered_urls
 
 #Load the URLs when user clicks a button
 if st.button("Load Documents"):
