@@ -1,1 +1,8 @@
+langchain_community
+langchain_groq
+langchain_core
+PyPDF2
 streamlit
+faiss-gpu
+sentence_transformers
+beautifulsoup4 requests
