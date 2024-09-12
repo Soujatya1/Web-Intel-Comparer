@@ -114,4 +114,4 @@ if st.button("Load Documents"):
       if user_query:
         st.write(f"Processing query: {user_query}")
         response = retrieval_chain.invoke({"input": user_query})
-        st.write(response['answer])
+        st.write(response['answer'])
