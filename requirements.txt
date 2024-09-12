@@ -3,7 +3,7 @@ langchain_groq
 langchain_core
 PyPDF2
 streamlit
-faiss-gpu
+faiss-cpu
 sentence_transformers
 beautifulsoup4
 requests
