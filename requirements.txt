@@ -5,4 +5,5 @@ PyPDF2
 streamlit
 faiss-gpu
 sentence_transformers
-beautifulsoup4 requests
+beautifulsoup4
+requests
