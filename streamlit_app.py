@@ -51,6 +51,9 @@ def load_sitemap(sitemap_urls, filter_urls):
 
       #Filter URLs
       selected_urls = [url for url in urls if any(filter in url for filter in filter_urls)]
+      #Append URLs to the main list
+      filtered_urls.extend(selected_urls)
+      
     except Exception as e:
       st.error(f"Error loading sitemap: {e}")
   return filtered_urls
