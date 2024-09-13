@@ -86,7 +86,7 @@ if st.session_state.docs_loaded:
           chunk_overlap  = 100,
           length_function = len,
       )
-      st.session_state.document_chunks = text_splitter.split_documents(st.session_state.docs)
+    st.session_state.document_chunks = text_splitter.split_documents(st.session_state.docs)
 
       #Vector db creation
   if "vector_db" not in st.session_state:
