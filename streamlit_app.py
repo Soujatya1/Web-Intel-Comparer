@@ -89,6 +89,9 @@ if st.button("Load Documents"):
       document_chunks = text_splitter.split_documents(docs)
 
       #Vector db creation
+    if len(document_chunks)==0:
+      st.write("No doc chunks created")
+    else:
       st.write("Creating vector store...")
       vector_db = FAISS.from_documents(document_chunks, hf_embedding)
 
