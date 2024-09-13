@@ -128,7 +128,7 @@ if st.button("Load Documents"):
         
 
 
-        if response and 'answer in response:
+        if response and 'answer' in response:
           st.write(response['answer'])
         else:
           st.error("No answer")
