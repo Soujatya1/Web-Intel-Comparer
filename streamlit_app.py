@@ -76,7 +76,9 @@ if st.button("Load Documents"):
         st.success(f"Successfully loaded content from: {url}")
       except Exception as e:
         st.error("Failed to load content")
-    if docs:
+    if len(docs)==0:
+      st.error("No docs loaded")
+    else:
       st.write("Splitting documents into chunks...")
       #Text Splitting
       text_splitter = RecursiveCharacterTextSplitter(
