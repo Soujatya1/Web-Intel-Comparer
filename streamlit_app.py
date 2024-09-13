@@ -112,19 +112,19 @@ if st.session_state.docs_loaded:
       Question: {input}""")
   
     #Retriever from Vector store
-    retriever = st.session_state.vector_db.as_retriever()
+  retriever = st.session_state.vector_db.as_retriever()
 
     #Stuff Document Chain Creation
-    document_chain = create_stuff_documents_chain(st.session_state.llm, prompt)
+  document_chain = create_stuff_documents_chain(st.session_state.llm, prompt)
 
     #Create a retrieval chain
-    retrieval_chain = create_retrieval_chain(retriever,document_chain)
+  retrieval_chain = create_retrieval_chain(retriever,document_chain)
 
     #Input for user queries
-    user_query = st.text_input("Ask a question")
+  user_query = st.text_input("Ask a question")
 
     #Process the query
-    if user_query:
+  if user_query:
       st.write(f"Processing query: {user_query}")
       try:
         response = retrieval_chain.invoke({"input": user_query})
