@@ -63,7 +63,7 @@ if st.button("Load Documents"):
   if not sitemap_urls or not filter_urls:
     st.error("Please enter both sitemap URLs and keywords")
   else:
-    st.write("Loading and filtering URLs")
+    #st.write("Loading and filtering URLs")
     filtered_urls = load_sitemap(sitemap_urls, filter_urls)
     st.write(f"Loaded {len(filtered_urls)} filtered URLs")
     
@@ -112,6 +112,9 @@ if st.button("Load Documents"):
 
       #Create a retrieval chain
       retrieval_chain = create_retrieval_chain(retriever,document_chain)
+
+      #Input for user queries
+      user_query = st.text_input("Ask a question")
 
       #Process the query
       if user_query:
