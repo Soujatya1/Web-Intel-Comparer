@@ -19,11 +19,12 @@ st.title("Insurance Policy Intelligence and Comparison Chatbot")
 
 #LLM
 api_key = "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"
-
-llm = ChatGroq(groq_api_key = api_key, model_name = 'llama-3.1-70b-versatile', temperature = 0.2, top_p = 0.2)
+if "llm" not in st.session_state:
+  st.session_state.llm = ChatGroq(groq_api_key = api_key, model_name = 'llama-3.1-70b-versatile', temperature = 0.2, top_p = 0.2)
 
 #Embedding
-hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+if "hf_embedding" not in st.session_state:
+  st.session_state.hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
 #Placeholder for user input: Web URLs
 st.write("Enter the sitemap URLs:")
@@ -79,6 +80,7 @@ if st.button("Load Documents"):
     if len(docs)==0:
       st.error("No docs loaded")
     else:
+      st.session_state.docs = docs
       st.write("Splitting documents into chunks...")
       #Text Splitting
       text_splitter = RecursiveCharacterTextSplitter(
@@ -86,17 +88,28 @@ if st.button("Load Documents"):
           chunk_overlap  = 100,
           length_function = len,
       )
-      document_chunks = text_splitter.split_documents(docs)
+      document_chunks = text_splitter.split_documents(st.session_state.docs)
+
+      st.session_state.document_chunks = document_chunks
 
       #Vector db creation
-    if len(document_chunks)==0:
-      st.write("No doc chunks created")
+    if len(st.session_state.document_chunks)==0:
+      st.error("No doc chunks created")
     else:
-      st.write("Creating vector store...")
-      vector_db = FAISS.from_documents(document_chunks, hf_embedding)
+      st.write("Created document chunks")
+      try:
+        st.write("Creating vector store")
+        vector_db = FAISS.from_documents(st.session_state.document_chunks, st.session_state.hf_embedding)
+        st.session_state.vector_db = vector_db
+        st.write("Vector store created successfully")
+        
+      except Excpetion as e:
+        st.error("Error creating vector store")
+        st.stop()
 
-      #Craft ChatPrompt Template
-      prompt = ChatPromptTemplate.from_template(
+#Craft ChatPrompt Template
+if "vector_db" in st.session_state:
+  prompt = ChatPromptTemplate.from_template(
       """
       You are an HDFC Life Insurance specialist who needs to answer queries based on the information provided in the websites. Please follow all the websites, and answer as per the same.
       Do not answer anything out of the website information.
@@ -109,26 +122,28 @@ if st.button("Load Documents"):
       </context>
       Question: {input}""")
 
-      #Retriever from Vector store
-      retriever = vector_db.as_retriever()
+    #Retriever from Vector store
+    retriever = st.session_state.vector_db.as_retriever()
 
-      #Stuff Document Chain Creation
-      document_chain = create_stuff_documents_chain(llm, prompt)
+    #Stuff Document Chain Creation
+    document_chain = create_stuff_documents_chain(st.session_state.llm, prompt)
 
-      #Create a retrieval chain
-      retrieval_chain = create_retrieval_chain(retriever,document_chain)
+    #Create a retrieval chain
+    retrieval_chain = create_retrieval_chain(retriever,document_chain)
 
-      #Input for user queries
-      user_query = st.text_input("Ask a question")
+    #Input for user queries
+    user_query = st.text_input("Ask a question")
 
-      #Process the query
-      if user_query:
-        st.write(f"Processing query: {user_query}")
+    #Process the query
+    if user_query:
+      st.write(f"Processing query: {user_query}")
+      try:
         response = retrieval_chain.invoke({"input": user_query})
         
-
-
+        #Check if response is valid
         if response and 'answer' in response:
           st.write(response['answer'])
         else:
-          st.error("No answer")
+          st.error("No answer returned")
+      except Exception as e:
+        st.error("Error during retrieval chain execution")
