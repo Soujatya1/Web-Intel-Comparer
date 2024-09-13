@@ -108,8 +108,8 @@ if st.button("Load Documents"):
         st.stop()
 
 #Craft ChatPrompt Template
-if "vector_db" in st.session_state:
-  prompt = ChatPromptTemplate.from_template(
+  if "vector_db" in st.session_state:
+    prompt = ChatPromptTemplate.from_template(
       """
       You are an HDFC Life Insurance specialist who needs to answer queries based on the information provided in the websites. Please follow all the websites, and answer as per the same.
       Do not answer anything out of the website information.
