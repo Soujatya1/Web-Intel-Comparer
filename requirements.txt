@@ -7,3 +7,4 @@ faiss-cpu
 sentence_transformers
 beautifulsoup4
 requests
+lxml
