@@ -39,7 +39,11 @@ sitemap_urls = [url.strip() for url in sitemap_urls_input.split("\n") if url.str
 filter_urls = [keyword.strip() for keyword in filter_urls_input.split(",") if keyword.strip()]
 
 #URL scraping logic
-def load_sitemap(sitemap_urls, filter_urls):
+def load_documents():
+  if not sitemap_urls or not filter_urls:
+    st.error("Error")
+    return
+    
   filtered_urls = []
   for sitemap_url in sitemap_urls:
     try:
@@ -54,62 +58,47 @@ def load_sitemap(sitemap_urls, filter_urls):
       selected_urls = [url for url in urls if any(filter in url for filter in filter_urls)]
       #Append URLs to the main list
       filtered_urls.extend(selected_urls)
-      
     except Exception as e:
-      st.error(f"Error loading sitemap: {e}")
-  return filtered_urls
-
-#Load the URLs when user clicks a button
-if st.button("Load Documents"):
-  if not sitemap_urls or not filter_urls:
-    st.error("Please enter both sitemap URLs and keywords")
-  else:
-    #st.write("Loading and filtering URLs")
-    filtered_urls = load_sitemap(sitemap_urls, filter_urls)
-    st.write(f"Loaded {len(filtered_urls)} filtered URLs")
-    
-    docs = []
-    for url in filtered_urls:
+      st.error("Error loading sitemap")
+      return
+  docs = []
+  for url in filtered_urls:
       try:
-        st.write(f"loading content from: {url}")
         loader = WebBaseLoader(url)
         docs.extend(loader.load())
         st.success(f"Successfully loaded content from: {url}")
       except Exception as e:
         st.error("Failed to load content")
-    if len(docs)==0:
-      st.error("No docs loaded")
-    else:
-      st.session_state.docs = docs
-      st.write("Splitting documents into chunks...")
-      #Text Splitting
-      text_splitter = RecursiveCharacterTextSplitter(
+  st.session_state.docs = docs
+  st.session_state.docs_loaded = True
+  
+#Load the URLs when user clicks a button
+if "docs_loaded" not in st.session_state:
+  st.session_state.docs_loaded = False
+  
+if st.button("Load Documents") and not st.session_state.docs_loaded:
+  load_documents()
+if st.session_state.docs_loaded:
+  #Text Splitting
+  if "document_chunks" not in st.session_state:
+    text_splitter = RecursiveCharacterTextSplitter(
           chunk_size = 1500,
           chunk_overlap  = 100,
           length_function = len,
       )
-      document_chunks = text_splitter.split_documents(st.session_state.docs)
-
-      st.session_state.document_chunks = document_chunks
+      st.session_state.document_chunks = text_splitter.split_documents(st.session_state.docs)
 
       #Vector db creation
-    if len(st.session_state.document_chunks)==0:
-      st.error("No doc chunks created")
-    else:
-      st.write("Created document chunks")
-      try:
-        st.write("Creating vector store")
-        vector_db = FAISS.from_documents(st.session_state.document_chunks, st.session_state.hf_embedding)
-        st.session_state.vector_db = vector_db
-        st.write("Vector store created successfully")
-        
-      except Excpetion as e:
+  if "vector_db" not in st.session_state:
+    try:
+       st.session_state.vector_db = FAISS.from_documents(st.session_state.document_chunks, st.session_state.hf_embedding)
+       st.write("Vector store created successfully")
+    except Excpetion as e:
         st.error("Error creating vector store")
-        st.stop()
+
 
 #Craft ChatPrompt Template
-  if "vector_db" in st.session_state:
-    prompt = ChatPromptTemplate.from_template(
+  prompt = ChatPromptTemplate.from_template(
       """
       You are an HDFC Life Insurance specialist who needs to answer queries based on the information provided in the websites. Please follow all the websites, and answer as per the same.
       Do not answer anything out of the website information.
