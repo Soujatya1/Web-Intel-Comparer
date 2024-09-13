@@ -121,7 +121,7 @@ if "vector_db" in st.session_state:
       {context}
       </context>
       Question: {input}""")
-
+  
     #Retriever from Vector store
     retriever = st.session_state.vector_db.as_retriever()
 
