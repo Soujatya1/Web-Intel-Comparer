@@ -125,4 +125,10 @@ if st.button("Load Documents"):
       if user_query:
         st.write(f"Processing query: {user_query}")
         response = retrieval_chain.invoke({"input": user_query})
-        st.write(response['answer'])
+        
+
+
+        if response and 'answer in response:
+          st.write(response['answer'])
+        else:
+          st.error("No answer")
