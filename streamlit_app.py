@@ -66,7 +66,8 @@ def load_documents():
       try:
         loader = WebBaseLoader(url)
         docs.extend(loader.load())
-        st.success(f"Successfully loaded content from: {url}")
+        #st.success(f"Successfully loaded content from: {url}")
+        st.success(f"Successfully loaded content from: {len(filtered_urls)}")
       except Exception as e:
         st.error("Failed to load content")
   st.session_state.docs = docs
