@@ -21,7 +21,7 @@ api_key = "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"
 
 # Initialize the LLM and Embedding only once
 if "llm" not in st.session_state:
-    st.session_state.llm = ChatGroq(groq_api_key=api_key, model_name='llama-3.1-70b-versatile', temperature=0.2, top_p=0.2)
+    st.session_state.llm = ChatGroq(groq_api_key=api_key, model_name='llama-3.1-70b-versatile', temperature=0, top_p=0.2)
 
 if "hf_embedding" not in st.session_state:
     st.session_state.hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
