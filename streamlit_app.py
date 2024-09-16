@@ -125,7 +125,7 @@ if "vector_db" in st.session_state:
         # Prepare prompt template
         prompt = ChatPromptTemplate.from_template(
             """
-            You are an Insurance specialist who needs to answer queries based on the information provided in the websites. Please follow all the websites, and answer as per the same.
+            You are an Insurance specialist who needs to answer queries based on the information provided in the websites. Please follow all the websites, read all texts from the website.
             Do not answer anything out of the website information.
             Do not skip any information as per the query asked from the context. Answer appropriately as per the query asked.
             All pointers for every questions asked should be mentioned as per the information provided on website.
