@@ -24,7 +24,7 @@ if "llm" not in st.session_state:
     st.session_state.llm = ChatGroq(groq_api_key=api_key, model_name='llama-3.1-70b-versatile', temperature=0.2, top_p=0.2)
 
 if "hf_embedding" not in st.session_state:
-    st.session_state.hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    st.session_state.hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-MiniLM-L6-v2")
 
 # Step 1: User input
 sitemap_urls_input = st.text_area("Enter Sitemap URLs (one per line)", height=150)
@@ -88,7 +88,7 @@ if st.button("Load Documents"):
 if "filtered_urls" in st.session_state and "vector_db" not in st.session_state:
     try:
         st.session_state.docs = []
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=100)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         
         # Process URLs in batches
         for url in st.session_state.filtered_urls:
