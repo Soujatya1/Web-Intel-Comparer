@@ -18,7 +18,7 @@ import pickle
 st.title("Insurance Policy Comparison Chatbot")
 
 # API Key for LLM
-api_key = st.secrets["grok_api_key"]
+api_key = st.secrets["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"]
 
 # Initialize the LLM and Embedding only once
 if "llm" not in st.session_state:
