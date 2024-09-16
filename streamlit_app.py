@@ -11,14 +11,13 @@ from langchain.chains import create_retrieval_chain
 from langchain.document_loaders import WebBaseLoader
 from bs4 import BeautifulSoup
 import hashlib
-import time
 import pickle
 
 # Streamlit app layout
 st.title("Insurance Policy Comparison Chatbot")
 
 # API Key for LLM
-api_key = "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"
+api_key = st.secrets["grok_api_key"]
 
 # Initialize the LLM and Embedding only once
 if "llm" not in st.session_state:
@@ -76,6 +75,10 @@ if st.button("Load Documents"):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             filtered_urls = loop.run_until_complete(load_filtered_documents(sitemap_urls, filter_keywords))
+            
+            # Save filtered_urls in session_state
+            st.session_state.filtered_urls = filtered_urls
+            
             if filtered_urls:
                 st.success(f"Filtered {len(filtered_urls)} URLs based on keywords.")
             else:
@@ -88,7 +91,7 @@ if "filtered_urls" in st.session_state and "vector_db" not in st.session_state:
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=100)
         
         # Process URLs in batches
-        for url in filtered_urls:
+        for url in st.session_state.filtered_urls:
             loader = WebBaseLoader(url)
             docs = loader.load()
             st.session_state.docs.extend(docs)
@@ -115,26 +118,28 @@ if "filtered_urls" in st.session_state and "vector_db" not in st.session_state:
 
 # Step 6: Querying and displaying results
 if "vector_db" in st.session_state:
-    prompt = ChatPromptTemplate.from_template(
-        """
-        You are an HDFC Life Insurance specialist who needs to answer queries based on the information provided in the websites.
-        Compare your policies against other companies. Provide tabular data wherever required.
-
-        <context>
-        {context}
-        </context>
-
-        Question: {input}
-        """
-    )
-
-    retriever = st.session_state.vector_db.as_retriever()
-    document_chain = create_stuff_documents_chain(st.session_state.llm, prompt)
-    retrieval_chain = create_retrieval_chain(retriever, document_chain)
-
+    # Query input field appears after loading vector_db
     user_query = st.text_input("Ask a question about the Saral Pension policies")
 
     if user_query:
+        # Prepare prompt template
+        prompt = ChatPromptTemplate.from_template(
+            """
+            You are an HDFC Life Insurance specialist who needs to answer queries based on the information provided in the websites.
+            Compare your policies against other companies. Provide tabular data wherever required.
+
+            <context>
+            {context}
+            </context>
+
+            Question: {input}
+            """
+        )
+
+        retriever = st.session_state.vector_db.as_retriever()
+        document_chain = create_stuff_documents_chain(st.session_state.llm, prompt)
+        retrieval_chain = create_retrieval_chain(retriever, document_chain)
+
         with st.spinner("Processing your query..."):
             try:
                 response = retrieval_chain.invoke({"input": user_query})
