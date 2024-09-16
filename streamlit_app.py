@@ -1,5 +1,6 @@
 import streamlit as st
-from concurrent.futures import ThreadPoolExecutor
+import aiohttp
+import asyncio
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_groq import ChatGroq
 from langchain.embeddings import HuggingFaceEmbeddings
@@ -8,15 +9,16 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
 from langchain.document_loaders import WebBaseLoader
-import requests
 from bs4 import BeautifulSoup
 import hashlib
+import time
+import pickle
 
 # Streamlit app layout
 st.title("Insurance Policy Comparison Chatbot")
 
 # API Key for LLM
-api_key = st.secrets["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"]
+api_key = st.secrets["grok_api_key"]
 
 # Initialize the LLM and Embedding only once
 if "llm" not in st.session_state:
@@ -35,42 +37,35 @@ filter_keywords = [keyword.strip() for keyword in filter_keywords_input.split(",
 def get_cache_key(url):
     return hashlib.md5(url.encode('utf-8')).hexdigest()
 
-def load_document_from_url(url):
-    # Cached document check
-    cache_key = get_cache_key(url)
-    if cache_key in st.session_state:
-        return st.session_state[cache_key]
-    
+# Asynchronous function to load documents
+async def fetch_document(session, url):
     try:
-        loader = WebBaseLoader(url)
-        loaded_docs = loader.load()
-        st.session_state[cache_key] = loaded_docs # Cache loaded document
-        return loaded_docs
+        async with session.get(url) as response:
+            content = await response.text()
+            soup = BeautifulSoup(content, 'lxml')
+            return soup
     except Exception as e:
         st.error(f"Failed to load content from {url}: {e}")
-        return []
+        return None
+
+async def load_sitemaps(sitemap_urls):
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_document(session, url) for url in sitemap_urls]
+        return await asyncio.gather(*tasks)
 
 # Step 3: Parallel loading of filtered URLs
-def load_documents_parallel(sitemap_urls, filter_keywords):
-    filtered_urls = []
-    with ThreadPoolExecutor() as executor:
-        for sitemap_url in sitemap_urls:
-            try:
-                response = requests.get(sitemap_url)
-                sitemap_content = response.content
-                soup = BeautifulSoup(sitemap_content, 'lxml')
-                urls = [loc.text for loc in soup.find_all('loc')]
-                selected_urls = [url for url in urls if any(keyword in url for keyword in filter_keywords)]
-                filtered_urls.extend(selected_urls)
-            except Exception as e:
-                st.error(f"Error loading sitemap {sitemap_url}: {e}")
+def filter_urls(soup, filter_keywords):
+    urls = [loc.text for loc in soup.find_all('loc')]
+    return [url for url in urls if any(keyword in url for keyword in filter_keywords)]
 
-        # Load documents in parallel
-        futures = [executor.submit(load_document_from_url, url) for url in filtered_urls]
-        docs = []
-        for future in futures:
-            docs.extend(future.result()) # Combine results from all threads
-        return docs
+async def load_filtered_documents(sitemap_urls, filter_keywords):
+    sitemaps = await load_sitemaps(sitemap_urls)
+    filtered_urls = []
+    for sitemap in sitemaps:
+        if sitemap:
+            filtered_urls.extend(filter_urls(sitemap, filter_keywords))
+    
+    return filtered_urls
 
 # Step 4: Button to trigger document loading
 if st.button("Load Documents"):
@@ -78,31 +73,48 @@ if st.button("Load Documents"):
         st.error("Please enter valid sitemap URLs and keywords.")
     else:
         with st.spinner("Loading documents..."):
-            docs = load_documents_parallel(sitemap_urls, filter_keywords)
-            if docs:
-                st.session_state.docs = docs
-                st.session_state.docs_loaded = True
-                st.success(f"Loaded {len(docs)} documents successfully.")
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            filtered_urls = loop.run_until_complete(load_filtered_documents(sitemap_urls, filter_keywords))
+            if filtered_urls:
+                st.success(f"Filtered {len(filtered_urls)} URLs based on keywords.")
             else:
-                st.error("No documents loaded. Please check the sitemap URLs and keywords.")
+                st.error("No URLs matched the provided keywords.")
 
-# Step 5: Proceed if documents are loaded
-if "docs_loaded" in st.session_state and st.session_state.docs_loaded:
-    # Text splitting
-    if "document_chunks" not in st.session_state:
+# Step 5: Create or load vector store (use caching)
+if filtered_urls and "vector_db" not in st.session_state:
+    try:
+        st.session_state.docs = []
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=100)
-        st.session_state.document_chunks = text_splitter.split_documents(st.session_state.docs)
+        
+        # Process URLs in batches
+        for url in filtered_urls:
+            loader = WebBaseLoader(url)
+            docs = loader.load()
+            st.session_state.docs.extend(docs)
+        
+        document_chunks = text_splitter.split_documents(st.session_state.docs)
+        
+        # Cache embeddings and vector store
+        with st.spinner("Creating vector store..."):
+            embeddings_cache_file = 'embeddings_cache.pkl'
+            if not st.session_state.get("vector_db"):
+                # Try loading the cached embeddings
+                try:
+                    with open(embeddings_cache_file, 'rb') as f:
+                        st.session_state.vector_db = pickle.load(f)
+                    st.success("Loaded vector store from cache.")
+                except FileNotFoundError:
+                    # If cache not available, create a new one
+                    st.session_state.vector_db = FAISS.from_documents(document_chunks, st.session_state.hf_embedding)
+                    with open(embeddings_cache_file, 'wb') as f:
+                        pickle.dump(st.session_state.vector_db, f)
+                    st.success("Vector store created and cached successfully.")
+    except Exception as e:
+        st.error(f"Error creating vector store: {e}")
 
-    # Vector database creation
-    if "vector_db" not in st.session_state:
-        try:
-            with st.spinner("Creating vector store..."):
-                st.session_state.vector_db = FAISS.from_documents(st.session_state.document_chunks, st.session_state.hf_embedding)
-                st.success("Vector store created successfully.")
-        except Exception as e:
-            st.error(f"Error creating vector store: {e}")
-
-    # User query input and LLM interaction
+# Step 6: Querying and displaying results
+if "vector_db" in st.session_state:
     prompt = ChatPromptTemplate.from_template(
         """
         You are an HDFC Life Insurance specialist who needs to answer queries based on the information provided in the websites.
@@ -123,11 +135,12 @@ if "docs_loaded" in st.session_state and st.session_state.docs_loaded:
     user_query = st.text_input("Ask a question about the Saral Pension policies")
 
     if user_query:
-        try:
-            response = retrieval_chain.invoke({"input": user_query})
-            if response and 'answer' in response:
-                st.write(response['answer'])
-            else:
-                st.error("No answer returned. Please check the query or data.")
-        except Exception as e:
-            st.error(f"Error processing query: {e}")
+        with st.spinner("Processing your query..."):
+            try:
+                response = retrieval_chain.invoke({"input": user_query})
+                if response and 'answer' in response:
+                    st.write(response['answer'])
+                else:
+                    st.error("No answer returned. Please check the query or data.")
+            except Exception as e:
+                st.error(f"Error processing query: {e}")
