@@ -82,7 +82,7 @@ if st.button("Load Documents"):
                 st.error("No URLs matched the provided keywords.")
 
 # Step 5: Create or load vector store (use caching)
-if filtered_urls in st.session_state and "vector_db" not in st.session_state:
+if "filtered_urls" in st.session_state and "vector_db" not in st.session_state:
     try:
         st.session_state.docs = []
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=100)
