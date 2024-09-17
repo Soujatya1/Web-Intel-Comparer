@@ -10,4 +10,4 @@ requests
 lxml
 aiohttp
 asyncio
-python-24.2
+pip install --upgrade pip
