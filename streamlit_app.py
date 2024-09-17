@@ -103,7 +103,7 @@ if st.button("Load Documents"):
 
     # Text Splitting and batched vector storing
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100, length_function=len)
-    vector_db = FAISS(hf_embedding)
+    vector_db = FAISS(document_chunks, hf_embedding)
 
     batch_embed_and_store(loaded_docs)
 
