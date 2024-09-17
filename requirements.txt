@@ -10,4 +10,4 @@ requests
 lxml
 aiohttp
 asyncio
-pip --upgrade
+python3-pip
