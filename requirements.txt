@@ -10,5 +10,4 @@ requests
 lxml
 aiohttp
 asyncio
-concurrent.futures
---upgrade pip
+python-24.2
