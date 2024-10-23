@@ -90,6 +90,21 @@ def process_new_urls(sitemap_urls, filter_words, cached_urls):
     new_docs = load_and_process_documents(new_urls, filter_words)
     return new_docs, new_urls
 
+import hashlib
+
+def get_cache_key(urls, filter_words):
+    """
+    Generates a unique cache key based on the input sitemap URLs and filter words.
+    Uses a hash to ensure a unique key for different sets of inputs.
+    """
+    # Combine URLs and filter words into a single string
+    combined_input = ''.join(urls) + ''.join(filter_words)
+    
+    # Generate a hash value from the combined input
+    cache_key = hashlib.md5(combined_input.encode('utf-8')).hexdigest()
+    
+    return cache_key
+
 # Load and process documents
 if st.button("Load and Process"):
     sitemap_urls = sitemap_urls_input.splitlines()
