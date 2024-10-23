@@ -40,17 +40,17 @@ if st.button("Load and Process"):
    for sitemap_url in sitemap_urls:
        try:
            response = requests.get(sitemap_url)
-          sitemap_content = response.content
+           sitemap_content = response.content
  
            # Parse sitemap URL
            soup = BeautifulSoup(sitemap_content, 'lxml')
            urls = [loc.text for loc in soup.find_all('loc')]
  
            # Filter URLs
-          selected_urls = [url for url in urls if any(filter in url for filter in filter_urls)]
+           selected_urls = [url for url in urls if any(filter in url for filter in filter_urls)]
  
            # Append URLs to the main list
-          filtered_urls.extend(selected_urls)
+           filtered_urls.extend(selected_urls)
  
            for url in filtered_urls:
                try:
