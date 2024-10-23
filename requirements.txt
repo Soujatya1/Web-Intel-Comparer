@@ -10,4 +10,3 @@ requests
 lxml
 aiohttp
 asyncio
-hashlib
