@@ -66,65 +66,85 @@ def load_and_process_documents(sitemap_urls, filter_urls):
 
 # Cache embeddings and vector database creation
 @st.cache_resource
-def create_vector_db(_docs, _hf_embedding):
-    # Text Splitting
+def create_vector_db(_docs, _hf_embedding, existing_vector_db=None):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=2000,
         chunk_overlap=100,
         length_function=len,
     )
-
-    document_chunks = text_splitter.split_documents(_docs)
-    vector_db = FAISS.from_documents(document_chunks, _hf_embedding)
     
-    return vector_db, len(document_chunks)
+    document_chunks = text_splitter.split_documents(_docs)
+    
+    if existing_vector_db:
+        # Add new chunks to the existing vector DB
+        existing_vector_db.add_documents(document_chunks)
+        return existing_vector_db, len(document_chunks)
+    else:
+        # Create new FAISS vector database
+        vector_db = FAISS.from_documents(document_chunks, _hf_embedding)
+        return vector_db, len(document_chunks)
+
+def process_new_urls(sitemap_urls, filter_words, cached_urls):
+    """Process new URLs by filtering out already processed ones."""
+    new_urls = list(set(sitemap_urls) - set(cached_urls))
+    new_docs = load_and_process_documents(new_urls, filter_words)
+    return new_docs, new_urls
 
 # Load and process documents
 if st.button("Load and Process"):
     sitemap_urls = sitemap_urls_input.splitlines()
-    filter_urls = filter_words_input.splitlines()
+    filter_words = filter_words_input.splitlines()
+    
+    cache_key = get_cache_key(sitemap_urls, filter_words)
+    
+    # Check if embeddings exist in cache for previous URLs
+    if cache_key in st.session_state['embedding_cache']:
+        # Load from cache
+        cached_vector_db, cached_num_chunks, cached_urls = st.session_state['embedding_cache'][cache_key]
+        st.session_state['vector_db'] = cached_vector_db
+        st.write(f"Loaded cached embeddings for {len(cached_urls)} URLs. Number of chunks: {cached_num_chunks}")
 
-    # Load and process documents
-    st.session_state['loaded_docs'] = load_and_process_documents(sitemap_urls, filter_urls)
-
-    # Initialize embeddings and LLM
-    hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-    # Create vector database
-    st.session_state['vector_db'], num_chunks = create_vector_db(st.session_state['loaded_docs'], hf_embedding)
-    st.write(f"Number of chunks: {num_chunks}")
-
-    # LLM and Embeddings Initialization
+        # Identify and process new URLs
+        new_docs, new_urls = process_new_urls(sitemap_urls, filter_words, cached_urls)
+        
+        if new_docs:
+            # Initialize embeddings and add new documents to existing vector DB
+            hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+            st.session_state['vector_db'], num_new_chunks = create_vector_db(new_docs, hf_embedding, existing_vector_db=st.session_state['vector_db'])
+            
+            # Update cache with new URLs and embeddings
+            updated_urls = cached_urls + new_urls
+            updated_num_chunks = cached_num_chunks + num_new_chunks
+            st.session_state['embedding_cache'][cache_key] = (st.session_state['vector_db'], updated_num_chunks, updated_urls)
+            st.write(f"Processed and added {len(new_urls)} new URLs. Total chunks: {updated_num_chunks}")
+        else:
+            st.write("No new URLs to process.")
+        
+    else:
+        # Process and embed all URLs (no cache available)
+        loaded_docs = load_and_process_documents(sitemap_urls, filter_words)
+        hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        st.session_state['vector_db'], num_chunks = create_vector_db(loaded_docs, hf_embedding)
+        
+        # Cache the embeddings and document URLs
+        st.session_state['embedding_cache'][cache_key] = (st.session_state['vector_db'], num_chunks, sitemap_urls)
+        st.write(f"Processed and embedded {len(sitemap_urls)} URLs. Number of chunks: {num_chunks}")
+    
+    # LLM Initialization and prompt setup
     if api_key:
         llm = ChatGroq(groq_api_key=api_key, model_name='llama-3.1-70b-versatile', temperature=0.2, top_p=0.2)
-
-        # Craft ChatPrompt Template
+        
+        # Create prompt and retrieval chain
         prompt = ChatPromptTemplate.from_template(
             """
-            You are a Life Insurance specialist who needs to answer queries based on the information provided in the websites only. Please follow all the websites, and answer as per the same.
-            
-            Do not answer anything except from the website information which has been entered. Please do not skip any information from the tabular data in the website.
-            
-            Do not skip any information from the context. Answer appropriately as per the query asked.
-            
-            Now, being an excellent Life Insurance agent, you need to compare your policies against the other company's policies in the websites, if asked.
-            
-            Generate tabular data wherever required to classify the difference between different parameters of policies.
-            
+            You are a Life Insurance specialist who needs to answer queries based on the information provided in the websites only...
             <context>
             {context}
             </context>
-
             Question: {input}"""
         )
-
-        # Stuff Document Chain Creation
         document_chain = create_stuff_documents_chain(llm, prompt)
-
-        # Retriever from Vector store
         retriever = st.session_state['vector_db'].as_retriever()
-
-        # Create a retrieval chain
         st.session_state['retrieval_chain'] = create_retrieval_chain(retriever, document_chain)
 
 # Query Section
