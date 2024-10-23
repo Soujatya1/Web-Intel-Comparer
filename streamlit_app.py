@@ -123,7 +123,7 @@ query = st.text_input("Enter your query:")
 if st.button("Get Answer") and query:
    if st.session_state['retrieval_chain']:
        response = st.session_state['retrieval_chain'].invoke({"input": query})
-      st.write("Response:")
-      st.write(response['answer'])
+       st.write("Response:")
+       st.write(response['answer'])
    else:
-      st.write("Please load and process documents first.")
+       st.write("Please load and process documents first.")
