@@ -20,6 +20,10 @@ if 'vector_db' not in st.session_state:
   st.session_state['vector_db'] = None
 if 'retrieval_chain' not in st.session_state:
   st.session_state['retrieval_chain'] = None
+
+# Initialize embedding cache
+if 'embedding_cache' not in st.session_state:
+    st.session_state['embedding_cache'] = {}
  
 # Streamlit UI
 st.title("Website Intelligence")
