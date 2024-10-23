@@ -30,7 +30,7 @@ sitemap_urls_input = st.text_area("Enter sitemap URLs (one per line):")
 filter_words_input = st.text_area("Enter filter words (one per line):")
 
 # Cache the loading and processing of URLs and documents
-
+@st.cache_resource
 def load_and_process_documents(sitemap_urls, filter_urls):
     all_urls = []
     filtered_urls = []
@@ -65,7 +65,7 @@ def load_and_process_documents(sitemap_urls, filter_urls):
     return loaded_docs
 
 # Cache embeddings and vector database creation
-
+@st.cache_resource
 def create_vector_db(_docs, _hf_embedding):
     # Text Splitting
     text_splitter = RecursiveCharacterTextSplitter(
