@@ -103,11 +103,11 @@ if st.button("Load and Process"):
           length_function=len,
        )
  
-      document_chunks = text_splitter.split_documents(st.session_state['loaded_docs'])
-      st.write(f"Number of chunks: {len(document_chunks)}")
+       document_chunks = text_splitter.split_documents(st.session_state['loaded_docs'])
+       st.write(f"Number of chunks: {len(document_chunks)}")
  
        # Vector database storage
-      st.session_state['vector_db'] = FAISS.from_documents(document_chunks, hf_embedding)
+       st.session_state['vector_db'] = FAISS.from_documents(document_chunks, hf_embedding)
  
        # Stuff Document Chain Creation
        document_chain = create_stuff_documents_chain(llm, prompt)
@@ -116,7 +116,7 @@ if st.button("Load and Process"):
        retriever = st.session_state['vector_db'].as_retriever()
  
        # Create a retrieval chain
-      st.session_state['retrieval_chain'] = create_retrieval_chain(retriever, document_chain)
+       st.session_state['retrieval_chain'] = create_retrieval_chain(retriever, document_chain)
  
 # Query Section
 query = st.text_input("Enter your query:")
