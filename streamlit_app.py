@@ -66,7 +66,7 @@ def load_and_process_documents(sitemap_urls, filter_urls):
 
 # Cache embeddings and vector database creation
 @st.cache_resource
-def create_vector_db(docs, hf_embedding):
+def create_vector_db(_docs, hf_embedding):
     # Text Splitting
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=2000,
@@ -74,7 +74,7 @@ def create_vector_db(docs, hf_embedding):
         length_function=len,
     )
 
-    document_chunks = text_splitter.split_documents(docs)
+    document_chunks = text_splitter.split_documents(_docs)
     vector_db = FAISS.from_documents(document_chunks, hf_embedding)
     
     return vector_db, len(document_chunks)
