@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup
  
 # Initialize session state variables
 if 'loaded_docs' not in st.session_state:
-  st.session_state['loaded_docs'] = None
+  st.session_state['loaded_docs'] = []
 if 'vector_db' not in st.session_state:
   st.session_state['vector_db'] = None
 if 'retrieval_chain' not in st.session_state:
@@ -35,7 +35,7 @@ if st.button("Load and Process"):
   
    all_urls = []
    filtered_urls = []
-  st.session_state['loaded_docs'] = []
+   st.session_state['loaded_docs'] = []
   
    for sitemap_url in sitemap_urls:
        try:
