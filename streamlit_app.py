@@ -69,7 +69,7 @@ if st.button("Load and Process"):
        except Exception as e:
           st.write(f"Error processing sitemap {sitemap_url}: {e}")
   
-  st.write(f"Loaded documents: {len(st.session_state['loaded_docs'])}")
+ st.write(f"Loaded documents: {len(st.session_state['loaded_docs'])}")
   
    # LLM and Embeddings Initialization
    if api_key:
