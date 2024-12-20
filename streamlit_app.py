@@ -12,6 +12,8 @@ from langchain.chains import create_retrieval_chain
 from langchain.document_loaders import WebBaseLoader
 import requests
 from bs4 import BeautifulSoup
+from langchain.document_loaders import WebBaseLoader
+import hashlib
  
 # Initialize session state variables
 if 'loaded_docs' not in st.session_state:
@@ -30,45 +32,26 @@ st.title("Website Intelligence")
 
 api_key = "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"
 
-sitemap_urls_input = st.text_area("Enter sitemap URLs (one per line):")
-filter_words_input = st.text_area("Enter filter words (one per line):")
+website_urls_input = st.text_area("Enter website URLs (one per line):")
+
+#sitemap_urls_input = st.text_area("Enter sitemap URLs (one per line):")
+#filter_words_input = st.text_area("Enter filter words (one per line):")
 
 # Cache the loading and processing of URLs and documents
 @st.cache_resource
-def load_and_process_documents(sitemap_urls, filter_urls):
-    all_urls = []
-    filtered_urls = []
+def load_and_process_documents(website_urls):
     loaded_docs = []
-
-    for sitemap_url in sitemap_urls:
+    for url in website_urls:
         try:
-            response = requests.get(sitemap_url)
-            sitemap_content = response.content
-
-            # Parse sitemap URL
-            soup = BeautifulSoup(sitemap_content, 'lxml')
-            urls = [loc.text for loc in soup.find_all('loc')]
-
-            # Filter URLs
-            selected_urls = [url for url in urls if any(filter in url for filter in filter_urls)]
-            filtered_urls.extend(selected_urls)
-
-            for url in filtered_urls:
-                try:
-                    loader = WebBaseLoader(url)
-                    docs = loader.load()
-
-                    for doc in docs:
-                        doc.metadata["source"] = url
-                    loaded_docs.extend(docs)
-                except Exception as e:
-                    st.write(f"Error loading {url}: {e}")
+            loader = WebBaseLoader(url)
+            docs = loader.load()
+            for doc in docs:
+                doc.metadata["source"] = url
+            loaded_docs.extend(docs)
         except Exception as e:
-            st.write(f"Error processing sitemap {sitemap_url}: {e}")
-
+            st.write(f"Error loading {url}: {e}")
     return loaded_docs
 
-# Cache embeddings and vector database creation
 @st.cache_resource
 def create_vector_db(_docs, _hf_embedding, existing_vector_db=None):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -88,33 +71,21 @@ def create_vector_db(_docs, _hf_embedding, existing_vector_db=None):
         vector_db = FAISS.from_documents(document_chunks, _hf_embedding)
         return vector_db, len(document_chunks)
 
-def process_new_urls(sitemap_urls, filter_words, cached_urls):
-    """Process new URLs by filtering out already processed ones."""
-    new_urls = list(set(sitemap_urls) - set(cached_urls))
-    new_docs = load_and_process_documents(new_urls, filter_words)
-    return new_docs, new_urls
-
-import hashlib
-
-def get_cache_key(urls, filter_words):
+def get_cache_key(urls):
     """
-    Generates a unique cache key based on the input sitemap URLs and filter words.
+    Generates a unique cache key based on the input website URLs.
     Uses a hash to ensure a unique key for different sets of inputs.
     """
-    # Combine URLs and filter words into a single string
-    combined_input = ''.join(urls) + ''.join(filter_words)
-    
+    # Combine URLs into a single string
+    combined_input = ''.join(urls)
     # Generate a hash value from the combined input
     cache_key = hashlib.md5(combined_input.encode('utf-8')).hexdigest()
-    
     return cache_key
 
 # Load and process documents
 if st.button("Load and Process"):
-    sitemap_urls = sitemap_urls_input.splitlines()
-    filter_words = filter_words_input.splitlines()
-    
-    cache_key = get_cache_key(sitemap_urls, filter_words)
+    website_urls = website_urls_input.splitlines()
+    cache_key = get_cache_key(website_urls)
     
     # Check if embeddings exist in cache for previous URLs
     if cache_key in st.session_state['embedding_cache']:
@@ -122,32 +93,15 @@ if st.button("Load and Process"):
         cached_vector_db, cached_num_chunks, cached_urls = st.session_state['embedding_cache'][cache_key]
         st.session_state['vector_db'] = cached_vector_db
         st.write(f"Loaded cached embeddings for {len(cached_urls)} URLs. Number of chunks: {cached_num_chunks}")
-
-        # Identify and process new URLs
-        new_docs, new_urls = process_new_urls(sitemap_urls, filter_words, cached_urls)
-        
-        if new_docs:
-            # Initialize embeddings and add new documents to existing vector DB
-            hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-            st.session_state['vector_db'], num_new_chunks = create_vector_db(new_docs, hf_embedding, existing_vector_db=st.session_state['vector_db'])
-            
-            # Update cache with new URLs and embeddings
-            updated_urls = cached_urls + new_urls
-            updated_num_chunks = cached_num_chunks + num_new_chunks
-            st.session_state['embedding_cache'][cache_key] = (st.session_state['vector_db'], updated_num_chunks, updated_urls)
-            st.write(f"Processed and added {len(new_urls)} new URLs. Total chunks: {updated_num_chunks}")
-        else:
-            st.write("No new URLs to process.")
-        
     else:
         # Process and embed all URLs (no cache available)
-        loaded_docs = load_and_process_documents(sitemap_urls, filter_words)
+        loaded_docs = load_and_process_documents(website_urls)
         hf_embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         st.session_state['vector_db'], num_chunks = create_vector_db(loaded_docs, hf_embedding)
         
         # Cache the embeddings and document URLs
-        st.session_state['embedding_cache'][cache_key] = (st.session_state['vector_db'], num_chunks, sitemap_urls)
-        st.write(f"Processed and embedded {len(sitemap_urls)} URLs. Number of chunks: {num_chunks}")
+        st.session_state['embedding_cache'][cache_key] = (st.session_state['vector_db'], num_chunks, website_urls)
+        st.write(f"Processed and embedded {len(website_urls)} URLs. Number of chunks: {num_chunks}")
     
     # LLM Initialization and prompt setup
     if api_key:
@@ -156,7 +110,7 @@ if st.button("Load and Process"):
         # Create prompt and retrieval chain
         prompt = ChatPromptTemplate.from_template(
             """
-            You are a Wesbite Q&A specialist who needs to answer queries based on the information provided in the websites only...
+            You are a Website Q&A specialist who needs to answer queries based on the information provided in the websites only...
             <context>
             {context}
             </context>
