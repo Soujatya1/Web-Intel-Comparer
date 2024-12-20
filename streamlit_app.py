@@ -156,7 +156,7 @@ if st.button("Load and Process"):
         # Create prompt and retrieval chain
         prompt = ChatPromptTemplate.from_template(
             """
-            You are a Life Insurance specialist who needs to answer queries based on the information provided in the websites only...
+            You are a Wesbite Q&A specialist who needs to answer queries based on the information provided in the websites only...
             <context>
             {context}
             </context>
